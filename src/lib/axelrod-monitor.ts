@@ -69,19 +69,53 @@ export type TransactionBatchResult = {
 // OpenClaw injects these via skills.virtual-axr-transaction.env.*
 // =============================================================================
 
-export function getApiKey(): string {
-    const apiKey = process.env.LITE_AGENT_API_KEY;
-    if (!apiKey) {
-        throw new Error("Missing LITE_AGENT_API_KEY in environment. Please configure it in skills.entries.virtual-axr-transaction.env");
+export function getApiKey(chatId: string): string {
+    // Validate input
+    if (!chatId || typeof chatId !== "string") {
+        throw new Error(`Permission Denied: Invalid chat ID provided.`);
     }
-    return apiKey;
+
+    // 1. Try to find in multiple mappings: CHAT_API_KEY_MAP="chatId1:key1,chatId2:key2"
+    const multiKeys = process.env.CHAT_API_KEY_MAP;
+    if (multiKeys) {
+        const mappings = multiKeys.split(",").map(m => m.trim()).filter(m => m.length > 0);
+        for (const mapping of mappings) {
+            const parts = mapping.split(":");
+            if (parts.length < 2) continue; // Skip invalid mappings
+
+            const [mappedChatId, apiKey] = parts;
+            // Validate both chatId and apiKey are non-empty
+            if (mappedChatId && apiKey && mappedChatId === chatId && apiKey.trim().length > 0) {
+                return apiKey.trim();
+            }
+        }
+    }
+
+    // 2. Fallback to legacy single key if CHAT_ID matches
+    // Security: Reject wildcard or empty CHAT_ID values
+    const legacyApiKey = process.env.LITE_AGENT_API_KEY;
+    const legacyChatId = process.env.CHAT_ID;
+
+    if (legacyApiKey && legacyChatId) {
+        const trimmedApiKey = legacyApiKey.trim();
+        const trimmedChatId = legacyChatId.trim();
+
+        // Reject wildcard or invalid configurations
+        if (trimmedChatId === "*" || trimmedChatId === "" || trimmedApiKey === "") {
+            throw new Error(`Permission Denied: Chat ID ${chatId} is not configured in the access whitelist.`);
+        }
+
+        if (trimmedChatId === chatId) {
+            return trimmedApiKey;
+        }
+    }
+
+    throw new Error(`Permission Denied: Chat ID ${chatId} is not configured in the access whitelist.`);
 }
 
 export function getAxelrodAddress(): string {
     return process.env.AXELROD_AGENT_ADDRESS || DEFAULT_AXELROD_ADDRESS;
 }
-
-
 
 export function getDefaultTransactionCount(): number {
     return Number(process.env.BATCH_TRANSACTION_COUNT || "10");
@@ -109,14 +143,12 @@ export function getSwapParams(): SwapParams[] {
     }
 }
 
-
-
 // =============================================================================
 // HTTP Client
 // =============================================================================
 
-function createClient() {
-    const apiKey = getApiKey();
+function createClient(chatId: string) {
+    const apiKey = getApiKey(chatId);
     return axios.create({
         baseURL: API_BASE_URL,
         headers: {
@@ -132,11 +164,12 @@ function createClient() {
 
 /**
  * Get agent information by wallet address
+ * @param chatId - Telegram chat ID
  * @param agentAddress - Agent wallet address
  */
-export async function getAgent(agentAddress: string): Promise<AgentInfo> {
+export async function getAgent(chatId: string, agentAddress: string): Promise<AgentInfo> {
 
-    const client = createClient();
+    const client = createClient(chatId);
 
     // Try to get agent directly - the API might have a direct endpoint
     // If not, we'll need to search for it
@@ -166,11 +199,12 @@ export async function getAgent(agentAddress: string): Promise<AgentInfo> {
  * Create a job with an agent
  */
 export async function createJob(
+    chatId: string,
     agentWalletAddress: string,
     jobOfferingName: string,
     serviceRequirements: Record<string, unknown>
 ): Promise<JobCreateResult> {
-    const client = createClient();
+    const client = createClient(chatId);
 
     try {
         const response = await client.post<{ data: { jobId: number } }>("/acp/jobs", {
@@ -188,8 +222,8 @@ export async function createJob(
 /**
  * Get job status
  */
-export async function getJobStatus(jobId: number): Promise<JobStatus> {
-    const client = createClient();
+export async function getJobStatus(chatId: string, jobId: number): Promise<JobStatus> {
+    const client = createClient(chatId);
 
     try {
         const response = await client.get(`/acp/jobs/${jobId}`);
@@ -215,6 +249,7 @@ export async function getJobStatus(jobId: number): Promise<JobStatus> {
  * Poll job until completed
  */
 export async function pollJobUntilComplete(
+    chatId: string,
     jobId: number,
     maxPolls: number = 120,
     pollIntervalMs: number = 5000,
@@ -223,7 +258,7 @@ export async function pollJobUntilComplete(
     let lastPhase = "unknown";
 
     for (let i = 0; i < maxPolls; i++) {
-        const status = await getJobStatus(jobId);
+        const status = await getJobStatus(chatId, jobId);
         lastPhase = status.phase;
 
         // Debug: print current phase
@@ -257,11 +292,13 @@ export async function pollJobUntilComplete(
 
 /**
  * Send multiple swap_token transactions with Axelrod agent
+ * @param chatId - Telegram chat ID
  * @param agentAddress - Agent wallet address
  * @param transactionCount - Number of transactions to send (default: 10)
  * @param onProgress - Optional progress callback
  */
 export async function sendTransactionsWithAxelrod(
+    chatId: string,
     agentAddress: string,
     transactionCount: number = 10,
     onProgress?: (message: string) => void
@@ -281,10 +318,11 @@ export async function sendTransactionsWithAxelrod(
             if (onProgress) onProgress(`[${i + 1}/${transactionCount}] Executing swap: ${params.amount} ${params.fromSymbol} -> ${params.toSymbol}`);
 
             // Create the job
-            const { jobId } = await createJob(agentAddress, "swap_token", params);
+            const { jobId } = await createJob(chatId, agentAddress, "swap_token", params);
 
             // Poll until completion
             const result = await pollJobUntilComplete(
+                chatId,
                 jobId,
                 120, // maxPolls
                 5000, // pollIntervalMs

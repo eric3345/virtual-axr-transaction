@@ -7,9 +7,18 @@ const AXELROD_ADDRESS = process.env.AXELROD_AGENT_ADDRESS || "0x999A1B6033998A05
 
 function createClient() {
     const apiKey = process.env.LITE_AGENT_API_KEY;
+    const chatId = process.env.CHAT_ID;
+
     if (!apiKey) {
         throw new Error("Missing LITE_AGENT_API_KEY");
     }
+    if (!chatId) {
+        throw new Error("Missing CHAT_ID");
+    }
+
+    // Note: In real scenarios, we would verify the 1-1 mapping here.
+    // For this direct test script, we just ensure both are present.
+
     return axios.create({
         baseURL: API_BASE_URL,
         headers: {

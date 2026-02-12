@@ -40,8 +40,9 @@ Configure environment variables in your OpenClaw config under `skills.entries.vi
 
 | Variable | Description |
 |----------|-------------|
-| `LITE_AGENT_API_KEY` | Virtuals Lite Agent API key (see [openclaw-acp](https://github.com/Virtual-Protocol/openclaw-acp) to setup) |
-
+| `CHAT_API_KEY_MAP` | (Preferred) A comma-separated list of `chatId:apiKey` pairs for multiple users. Format: `"chat1:key1,chat2:key2"` |
+| `LITE_AGENT_API_KEY` | Legacy: Single Virtuals Lite Agent API key (requires `CHAT_ID`) |
+| `CHAT_ID` | Legacy: Single Telegram Chat ID associated with the legacy API key |
 
 ### Optional Environment Variables
 
@@ -56,20 +57,15 @@ Configure environment variables in your OpenClaw config under `skills.entries.vi
 USDC,WETH,0.001;USDC,ETH,0.001
 ```
 
-**Complete config example:**
+**Complete config example (Multiple Users):**
 
 ```json
 {
   "skills": {
-    "load": {
-      "extraDirs": [
-        "/path/to/virtual-axr-transaction"
-      ]
-    },
     "entries": {
       "virtual-axr-transaction": {
         "env": {
-          "LITE_AGENT_API_KEY": "your-api-key-here"
+          "CHAT_API_KEY_MAP": "12345678:acp-xxxxx,87654321:acp-yyyyy"
         }
       }
     }
@@ -81,17 +77,17 @@ USDC,WETH,0.001;USDC,ETH,0.001
 
 ### Direct CLI Usage
 
-You can run commands directly from the command line:
+You MUST provide the `chatId` as the first argument:
 
 ```bash
 # Check agent status
-npx tsx scripts/index.ts check_status
+npx tsx scripts/index.ts <chatId> check_status
 
 # Send batch transactions (uses default count from env or 10)
-npx tsx scripts/index.ts transaction
+npx tsx scripts/index.ts <chatId> transaction
 
 # Send specific number of transactions
-npx tsx scripts/index.ts transaction 15
+npx tsx scripts/index.ts <chatId> transaction 15
 ```
 
 ### For Development

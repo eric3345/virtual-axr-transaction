@@ -2,7 +2,7 @@
   "name": "virtual-axr-transaction",
   "version": "1.0.0",
   "description": "OpenClaw skill to send multiple swap_token transactions with Axelrod agent. Supports configurable transaction count, custom swap parameters, and agent info query.",
-  "main": "dist/index.js",
+  "main": "dist/src/lib/axelrod-monitor.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
@@ -13,7 +13,7 @@
     "test-skill": "echo 'Usage: LITE_AGENT_API_KEY=your-key npm run test-skill'"
   },
   "bin": {
-    "axr-monitor": "./scripts/index.ts"
+    "axr-monitor": "./dist/scripts/index.js"
   },
   "keywords": [
     "openclaw",

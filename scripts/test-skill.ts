@@ -19,19 +19,23 @@ async function testConfig() {
     console.log("🧪 Testing Skill Configuration\n");
     console.log("=".repeat(50));
 
+    // For testing purposes, we'll try to find any key
+    const testChatId = process.env.CHAT_ID || "test_chat_id";
+
     // Test 1: API Key
-    console.log("\n📝 Test 1: LITE_AGENT_API_KEY");
+    console.log("\n📝 Test 1: CHAT_API_KEY_MAP / LITE_AGENT_API_KEY");
     try {
-        const apiKey = getApiKey();
-        console.log(`✅ API Key found: ${apiKey.substring(0, 10)}...`);
+        const apiKey = getApiKey(testChatId);
+        console.log(`✅ API Key found for Chat ID ${testChatId}: ${apiKey.substring(0, 10)}...`);
     } catch (error: any) {
         console.log(`❌ Error: ${error.message}`);
-        console.log("💡 Usage: LITE_AGENT_API_KEY=your-key npx tsx scripts/test-skill.ts");
+        console.log("💡 Usage (Multiple): CHAT_API_KEY_MAP=\"chatId1:key1,chatId2:key2\" npx tsx scripts/test-skill.ts");
+        console.log("💡 Usage (Single): LITE_AGENT_API_KEY=your-key CHAT_ID=your-chat-id npx tsx scripts/test-skill.ts");
         return;
     }
 
-    // Test 2: Axelrod Address
-    console.log("\n📝 Test 2: AXELROD_AGENT_ADDRESS");
+    // Test 3: Axelrod Address
+    console.log("\n📝 Test 3: AXELROD_AGENT_ADDRESS");
     try {
         const address = getAxelrodAddress();
         console.log(`✅ Axelrod Address: ${address}`);
@@ -39,8 +43,8 @@ async function testConfig() {
         console.log(`❌ Error: ${error.message}`);
     }
 
-    // Test 3: Transaction Count
-    console.log("\n📝 Test 3: BATCH_TRANSACTION_COUNT");
+    // Test 4: Transaction Count
+    console.log("\n📝 Test 4: BATCH_TRANSACTION_COUNT");
     try {
         const count = getDefaultTransactionCount();
         console.log(`✅ Transaction Count: ${count}`);
@@ -48,8 +52,8 @@ async function testConfig() {
         console.log(`❌ Error: ${error.message}`);
     }
 
-    // Test 4: Swap Params
-    console.log("\n📝 Test 4: SWAP_PARAMS");
+    // Test 5: Swap Params
+    console.log("\n📝 Test 5: SWAP_PARAMS");
     try {
         const params = getSwapParams();
         console.log(`✅ Swap Params:`);
@@ -60,13 +64,11 @@ async function testConfig() {
         console.log(`❌ Error: ${error.message}`);
     }
 
-
-
-    // Test 7: API Connection (Optional - requires valid API key)
-    console.log("\n📝 Test 7: API Connection");
+    // Test 6: API Connection (Optional - requires valid API key and matching Chat ID)
+    console.log("\n📝 Test 6: API Connection");
     try {
         const address = getAxelrodAddress();
-        const agent = await getAgent(address);
+        const agent = await getAgent(testChatId, address);
         console.log(`✅ Connected to API`);
         console.log(`   Agent Name: ${agent.name}`);
         console.log(`   Wallet: ${agent.walletAddress}`);

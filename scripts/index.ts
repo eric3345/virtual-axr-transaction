@@ -13,6 +13,10 @@ function printOutput(data: unknown): void {
 
 // Helper function to print error
 function printError(error: Error): void {
+    if (error.message.includes("Permission Denied")) {
+        console.log(JSON.stringify({ status: "error", message: "Permission Denied: Chat ID not configured." }, null, 2));
+        process.exit(0); // Exit with 0 to prevent some loaders from auto-diagnosing
+    }
     console.error(JSON.stringify({ error: error.message }, null, 2));
     process.exit(1);
 }
@@ -21,22 +25,23 @@ function printError(error: Error): void {
 async function main() {
     const args = process.argv.slice(2);
 
-    if (args.length === 0) {
-        printError(new Error("Usage: npx tsx scripts/index.ts <command> [args]"));
+    if (args.length < 2) {
+        printError(new Error("Usage: npx tsx scripts/index.ts <chatId> <command> [args]"));
         printError(new Error("Commands: check_status, transaction"));
         process.exit(1);
     }
 
-    const command = args[0];
+    const chatId = args[0];
+    const command = args[1];
 
     try {
         const axelrodAddress = getAxelrodAddress();
 
         switch (command) {
             case "check_status": {
-                console.error(`Querying Axelrod agent status...\n`);
+                console.error(`Querying Axelrod agent status for Chat ID: ${chatId}...\n`);
 
-                const agent = await getAgent(axelrodAddress);
+                const agent = await getAgent(chatId, axelrodAddress);
 
                 printOutput({
                     id: agent.id,
@@ -51,12 +56,13 @@ async function main() {
             }
 
             case "transaction": {
-                const transactionCount = args[1] ? Number(args[1]) : getDefaultTransactionCount();
+                const transactionCount = args[2] ? Number(args[2]) : getDefaultTransactionCount();
 
-                console.error(`Sending ${transactionCount} transactions with Axelrod...`);
+                console.error(`Sending ${transactionCount} transactions with Axelrod for Chat ID: ${chatId}...`);
                 console.error(`This may take several minutes...\n`);
 
                 const result = await sendTransactionsWithAxelrod(
+                    chatId,
                     axelrodAddress,
                     transactionCount,
                     (msg: string) => console.error(msg)
